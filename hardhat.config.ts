@@ -1,6 +1,14 @@
 import { configVariable, defineConfig } from 'hardhat/config';
+import hardhatVerify from '@nomicfoundation/hardhat-verify';
+import 'dotenv/config';
 
 export default defineConfig({
+  plugins: [hardhatVerify],
+  paths: {
+    sources: './contracts',
+    cache: './cache',
+    artifacts: './artifacts',
+  },
   solidity: {
     profiles: {
       default: {
@@ -18,20 +26,28 @@ export default defineConfig({
     },
   },
   networks: {
-    hardhatMainnet: {
-      type: 'edr-simulated',
-      chainType: 'l1',
-    },
-    hardhatOp: {
-      type: 'edr-simulated',
-      chainType: 'op',
-    },
-    sepolia: {
+    bscTestnet: {
       type: 'http',
       chainType: 'l1',
-      url: configVariable('SEPOLIA_RPC_URL'),
-      accounts: [configVariable('SEPOLIA_PRIVATE_KEY')],
+      url: configVariable('BSC_TESTNET_RPC_URL'),
+      accounts: [configVariable('BSC_TESTNET_PRIVATE_KEY')],
+    },
+  },
+  chainDescriptors: {
+    97: {
+      name: 'BNB Smart Chain Testnet',
+      blockExplorers: {
+        etherscan: {
+          name: 'BscScan',
+          url: 'https://testnet.bscscan.com',
+          apiUrl: 'https://api-testnet.bscscan.com/api',
+        },
+      },
+    },
+  },
+  verify: {
+    etherscan: {
+      apiKey: configVariable('ETHERSCAN_API_KEY'),
     },
   },
 });
-
