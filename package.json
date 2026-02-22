@@ -1,0 +1,13 @@
+{
+  "name": "36-binance-polygon-bridge",
+  "type": "module",
+  "dependencies": {
+    "web3": "^4.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "22",
+    "dotenv": "^17.3.1",
+    "hardhat": "^3.1.9",
+    "typescript": "^5.9.3"
+  }
+}

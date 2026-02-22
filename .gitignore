@@ -1,0 +1,28 @@
+# Dependencies
+/node_modules
+pnpm-lock.yaml
+
+# Build outputs
+/dist
+/build
+/out
+
+# pnpm deploy output
+/bundle
+
+# Hardhat files
+/cache
+/artifacts
+/typechain-types
+/coverage
+coverage.json
+
+# Typechain output
+/types
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+/.vscode
