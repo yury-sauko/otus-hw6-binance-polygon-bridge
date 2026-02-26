@@ -1,4 +1,4 @@
-# Инструкция по настройке проекта 36-binance-polygon-bridge
+# Инструкция по инициализации проекта
 
 ## Шаг 1: Установка зависимостей
 
@@ -20,22 +20,39 @@ cp .env.example .env
 ### BSC_TESTNET_RPC_URL
 
 - **Публичный RPC**: `https://api.zan.top/bsc-testnet`
-- **Альтернативы на ChainList**: [BNB Smart Chain Testnet](https://chainlist.org/?search=BNB+Smart+Chain+Testnet&testnets=true)
+- **Альтернативы на ChainList**: [BNB Smart Chain Testnet](https://chainlist.org/chain/97)
 
-### BSC_TESTNET_PRIVATE_KEY
+### BSC_TESTNET_PRIVATE_KEY / POLYGON_AMOY_PRIVATE_KEY
 
-- Используйте приватный ключ тестового аккаунта с tBNB
+- Используйте приватный ключ тестового аккаунта
+- Для моста можно использовать один ключ для обеих сетей (владелец контракта)
 - **ВАЖНО**: Никогда не используйте приватный ключ от основного кошелька!
 
-### ETHERSCAN_API_KEY (опционально, для верификации)
+### POLYGON_AMOY_RPC_URL
+
+- **Публичный RPC**: `https://rpc-amoy.polygon.technology`
+- **Альтернативы на ChainList**: [ChainList Amoy](https://chainlist.org/chain/80002)
+
+### ETHERSCAN_API_KEY (для верификации)
 
 - Etherscan API V2 — один ключ для Etherscan и BSCScan
-- Получите на [etherscan.io/apis](https://etherscan.io/apis) или [bscscan.com/apis](https://bscscan.com/apis)
+- Получите на [etherscan.io/apidashboard](https://etherscan.io/apidashboard)
 
-### Получение тестовых tBNB
+##
 
-- [ChainList](https://chainlist.org/?search=BNB+Smart+Chain+Testnet&testnets=true) — добавьте тестовую сеть BNB в MetaMask
-- [Bnb Faucet](https://www.bnbchain.org/en/testnet-faucet) — получите тестовые токены (необходимо 0.002 BNB в BSC Mainnet)
+### Получение тестовых токенов
+
+Тестовая сеть **BNB Smart Chain Testnet** для подключения MetaMask - см. [ChainList](https://chainlist.org/?search=BNB+Smart+Chain+Testnet&testnets=true)
+
+Получение тестовых токенов **tBNB** - [Bnb Faucet](https://www.bnbchain.org/en/testnet-faucet) (необходимо 0.002 BNB в BSC Mainnet)
+
+##
+
+Тестовая сеть **Amoy (polygon)** для подключения MetaMask - см. [ChainList](https://chainlist.org/?testnets=true&search=amoy)
+
+Получение тестовых токенов **POL** - [polygon Faucet](https://faucet.polygon.technology/)
+
+##
 
 ## Шаг 3: Компиляция контрактов
 
@@ -43,53 +60,94 @@ cp .env.example .env
 pnpm compile
 ```
 
-## Шаг 4: Деплой в BNB Smart Chain Testnet
+## Шаг 4: Тестирование
 
-1. Убедитесь, что на аккаунте есть tBNB
-2. Выполните деплой:
+```bash
+pnpm test
+```
+
+Запускает Solidity-тесты из `contracts/token-bsc-pol.t.sol`. Все 7 тестов должны пройти.
+
+## Шаг 5: Деплой TokenBscPol
+
+**BSC Testnet** (нужны tBNB):
 
 ```bash
 pnpm deploy:bsc
 ```
 
-3. Сохраните адрес контракта в `.env`:
+**Polygon Amoy** (нужны POL):
+
+```bash
+pnpm deploy:pol
+```
+
+Сохраните адреса задеплоенных контрактов в `.env`:
 
 ```
 DEPLOYED_TOKEN_BSC_ADDRESS=0x...
+DEPLOYED_TOKEN_POLYGON_ADDRESS=0x...
 ```
 
-## Шаг 5: Верификация контракта (опционально)
+## Шаг 6: Верификация контрактов
 
-После деплоя можно верифицировать контракт на BSCScan:
+После деплоя и сохранения адресов в `.env` выполните верификацию:
 
 ```bash
-pnpm exec hardhat verify --network bscTestnet --build-profile default АДРЕС_КОНТРАКТА "BSC Test Token" "BTT" "1000000000000000000000000"
+pnpm verify:bsc
+pnpm verify:pol
 ```
 
-Аргументы конструктора: `name`, `symbol`, `initialSupply` (в wei). Значения должны совпадать с деплоем.
-
-## Шаг 6: Взаимодействие через Web3.js
+## Шаг 7: Взаимодействие
 
 ```bash
 pnpm interact
 ```
 
-Скрипт демонстрирует:
+Скрипт выводит информацию о токене для каждой сети (BSC и Polygon):
 
-- Получение цены газа
-- Проверку баланса tBNB
-- Информацию о токене (name, symbol, totalSupply, balanceOf)
+- Цену газа
+- Баланс (tBNB / POL)
+- Информацию о токене: symbol, totalSupply, balanceOf
+
+## Шаг 8: Мост между сетями (ручной режим)
+
+Мост работает в **два ручных шага**:
+
+### Мост, шаг 1. Вызов функции перевода токенов в исходной сети
+
+К примеру, через [PolygonScan](https://amoy.polygonscan.com/) или [BscScan](https://testnet.bscscan.com/) → Contract → Write Contract:
+
+- **BSC → Polygon**: вызовите `transferToPolygon(amount)` на контракте в BSC
+- **Polygon → BSC**: вызовите `transferToBSC(amount)` на контракте в Polygon
+
+Подтвердите транзакцию в кошельке. Токены будут сожжены в исходной сети, эмитируется событие `TransferToOtherChain`.
+
+### Мост, шаг 2. Запуск скрипта моста
+
+После подтверждения транзакции запустите:
+
+```bash
+pnpm bridge
+```
+
+Скрипт **сканирует обе сети** (BSC и Polygon, последние 200 блоков), находит события `TransferToOtherChain` и вызывает `mint` на целевой сети. Токены появятся на балансе в целевой сети.
 
 ## Структура проекта
 
 ```
 36-binance-polygon-bridge/
 ├── contracts/
-│   └── token-bsc.sol       # ERC20 токен для BSC
+│   ├── token-bsc-pol.sol     # ERC20 с burn/mint для моста
+│   └── token-bsc-pol.t.sol   # Solidity-тесты контракта
 ├── scripts/
-│   ├── deploy.js          # Деплой (Web3.js)
-│   └── interact.js        # Взаимодействие (Web3.js)
-├── .env                   # Не коммитьте!
+│   ├── lib/
+│   │   └── constants.js   # Общие константы и конфигурация сетей
+│   ├── deploy.js        # Деплой контракта
+│   ├── verify.js        # Верификация контракта на блок-эксплорере
+│   ├── interact.js      # Информация о токене в обеих сетях
+│   └── bridge.js        # Мост burn → mint
+├── .env
 ├── .env.example
 ├── hardhat.config.ts
 ├── package.json
@@ -99,22 +157,13 @@ pnpm interact
 
 ## Полезные команды
 
-```bash
-# Компиляция
-pnpm compile
-
-# Деплой в BSC Testnet
-pnpm deploy:bsc
-
-# Взаимодействие с контрактом
-pnpm interact
-
-# Верификация на BSCScan (аргументы должны быть аналогичны переданным при деплое)
-pnpm exec hardhat verify --network bscTestnet --build-profile default АДРЕС "BSC Test Token" "BTT" "1000000000000000000000000"
-```
-
-## Параметры BNB Smart Chain Testnet
-
-- **Chain ID**: 97 (0x61)
-- **Символ нативной валюты**: tBNB
-- **Explorer**: https://testnet.bscscan.com
+| Команда           | Описание                                                                                                     |
+| ----------------- | ------------------------------------------------------------------------------------------------------------ |
+| `pnpm compile`    | Компиляция контрактов                                                                                        |
+| `pnpm test`       | Запуск Solidity-тестов                                                                                       |
+| `pnpm deploy:bsc` | Деплой TokenBscPol в BSC Testnet                                                                             |
+| `pnpm deploy:pol` | Деплой TokenBscPol в Polygon Amoy                                                                            |
+| `pnpm verify:bsc` | Верификация контракта в BSC Testnet                                                                          |
+| `pnpm verify:pol` | Верификация контракта в Polygon Amoy                                                                         |
+| `pnpm interact`   | Информация о токене в обеих сетях                                                                            |
+| `pnpm bridge`     | Мост: сканирует обе сети (последние 200 блоков), обрабатывает события `TransferToOtherChain` и вызывает mint |

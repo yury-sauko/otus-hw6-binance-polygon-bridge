@@ -1,78 +1,76 @@
+import { network, artifacts } from 'hardhat';
 import { Web3 } from 'web3';
-import { artifacts } from 'hardhat';
-import 'dotenv/config';
+
+import { NETWORKS_CONFIG, TOKEN_NAME, TOKEN_SYMBOL, INITIAL_SUPPLY } from './lib/constants.js';
 
 /**
- * Скрипт деплоя контракта TokenBSC в BNB Smart Chain Testnet.
- * Использует Web3.js.
- *
- * Перед запуском: pnpm compile
- * Запуск: pnpm deploy:bsc
+ * Скрипт деплоя TokenBscPol.
+ * Запуск: pnpm deploy:bsc или pnpm deploy:pol
  */
 async function main() {
-  const RPC_URL = process.env.BSC_TESTNET_RPC_URL;
-  const PRIVATE_KEY = process.env.BSC_TESTNET_PRIVATE_KEY;
+  const connection = await network.connect();
+  const networkName = connection.networkName;
+  const config = NETWORKS_CONFIG[networkName];
 
-  if (!RPC_URL || !PRIVATE_KEY) {
-    console.error('Ошибка: Установите BSC_TESTNET_RPC_URL и BSC_TESTNET_PRIVATE_KEY в .env');
+  if (!config) {
+    console.error('Ошибка: Запустите через pnpm deploy:bsc или pnpm deploy:pol');
     process.exit(1);
   }
 
-  const web3 = new Web3(RPC_URL);
+  if (!config.rpc || !config.privateKey) {
+    console.error(`Ошибка: Установите RPC и PRIVATE_KEY для ${networkName} в .env`);
+    process.exit(1);
+  }
+
+  const web3 = new Web3(config.rpc);
   const account = web3.eth.accounts.privateKeyToAccount(
-    PRIVATE_KEY.startsWith('0x') ? PRIVATE_KEY : `0x${PRIVATE_KEY}`,
+    config.privateKey.startsWith('0x') ? config.privateKey : `0x${config.privateKey}`,
   );
   web3.eth.accounts.wallet.add(account);
 
-  console.log('Деплой контракта TokenBSC с аккаунта:', account.address);
+  console.log(`\nДеплой TokenBscPol в ${config.name} с аккаунта:`, account.address);
 
   const balance = await web3.eth.getBalance(account.address);
-  console.log('Баланс аккаунта:', web3.utils.fromWei(balance, 'ether'), 'tBNB');
+  console.log('Баланс:', web3.utils.fromWei(balance, 'ether'), config.nativeSymbol);
 
-  const artifact = await artifacts.readArtifact('TokenBSC');
+  const artifact = await artifacts.readArtifact('TokenBscPol');
   const { abi, bytecode } = artifact;
-
-  const tokenName = 'BSC Test Token';
-  const tokenSymbol = 'BTT';
-  const initialSupply = web3.utils.toWei('1000000', 'ether'); // 1M токенов
-
-  const initialSupplyFormatted = Number(web3.utils.fromWei(initialSupply, 'ether')).toLocaleString(
-    'ru-RU',
-  );
-
-  console.log('\n=== Деплой TokenBSC ===');
-  console.log('Name:', tokenName);
-  console.log('Symbol:', tokenSymbol);
-  console.log('Initial Supply:', initialSupplyFormatted + ' ' + tokenSymbol);
 
   const contract = new web3.eth.Contract(abi);
   const deploy = contract.deploy({
     data: bytecode,
-    arguments: [tokenName, tokenSymbol, initialSupply],
+    arguments: [TOKEN_NAME, TOKEN_SYMBOL, INITIAL_SUPPLY],
   });
 
   const gasEstimate = await deploy.estimateGas({ from: account.address });
-  console.log('Gas Estimate:', gasEstimate.toString());
+  const block = await web3.eth.getBlock('latest');
+  const maxPriorityFeePerGas = BigInt(web3.utils.toWei('30', 'gwei'));
+  const maxFeePerGas = block.baseFeePerGas * 2n + maxPriorityFeePerGas;
 
   const instance = await deploy.send({
     from: account.address,
     gas: gasEstimate,
+    maxPriorityFeePerGas,
+    maxFeePerGas,
   });
-
   const tokenAddress = instance.options.address;
-  console.log('TokenBSC задеплоен по адресу:', tokenAddress);
 
-  const chainId = await web3.eth.getChainId();
-  console.log('\n=== Информация о деплое ===');
-  console.log('Сеть: BNB Smart Chain Testnet');
-  console.log('ChainId:', chainId.toString());
-  console.log('\nДля использования в .env:');
-  console.log(`DEPLOYED_TOKEN_BSC_ADDRESS=${tokenAddress}`);
+  console.log('\nTokenBscPol задеплоен!');
+  console.log(
+    `\nДля .env: DEPLOYED_TOKEN_${
+      networkName === 'bscTestnet' ? 'BSC' : 'POLYGON'
+    }_ADDRESS=${tokenAddress}`,
+  );
+  console.log(
+    `\nДля верификации запустите команду: pnpm verify:${
+      networkName === 'bscTestnet' ? 'bsc' : 'pol'
+    }`,
+  );
 }
 
 main()
   .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
+  .catch((err) => {
+    console.error(err);
     process.exit(1);
   });

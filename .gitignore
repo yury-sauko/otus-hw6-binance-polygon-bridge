@@ -24,5 +24,8 @@ coverage.json
 .env
 .env.local
 
+# Bridge state
+.bridge-processed.json
+
 # IDE
 /.vscode

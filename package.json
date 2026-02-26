@@ -3,8 +3,13 @@
   "type": "module",
   "scripts": {
     "compile": "hardhat compile",
-    "deploy:bsc": "hardhat run scripts/deploy.js --network bscTestnet",
-    "interact": "hardhat run scripts/interact.js"
+    "test": "hardhat test solidity",
+    "deploy:bsc": "cross-env HARDHAT_NETWORK=bscTestnet hardhat run scripts/deploy.js",
+    "deploy:pol": "cross-env HARDHAT_NETWORK=polygonAmoy hardhat run scripts/deploy.js",
+    "verify:bsc": "cross-env HARDHAT_NETWORK=bscTestnet hardhat run scripts/verify.js",
+    "verify:pol": "cross-env HARDHAT_NETWORK=polygonAmoy hardhat run scripts/verify.js",
+    "interact": "hardhat run scripts/interact.js",
+    "bridge": "hardhat run scripts/bridge.js"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0",
@@ -13,6 +18,7 @@
   "devDependencies": {
     "@nomicfoundation/hardhat-verify": "^3.0.10",
     "@types/node": "22",
+    "cross-env": "^10.1.0",
     "dotenv": "^17.3.1",
     "hardhat": "^3.1.9",
     "typescript": "^5.9.3"

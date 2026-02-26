@@ -32,6 +32,12 @@ export default defineConfig({
       url: configVariable('BSC_TESTNET_RPC_URL'),
       accounts: [configVariable('BSC_TESTNET_PRIVATE_KEY')],
     },
+    polygonAmoy: {
+      type: 'http',
+      chainType: 'l1',
+      url: configVariable('POLYGON_AMOY_RPC_URL'),
+      accounts: [configVariable('POLYGON_AMOY_PRIVATE_KEY')],
+    },
   },
   chainDescriptors: {
     97: {
@@ -40,7 +46,17 @@ export default defineConfig({
         etherscan: {
           name: 'BscScan',
           url: 'https://testnet.bscscan.com',
-          apiUrl: 'https://api-testnet.bscscan.com/api',
+          apiUrl: 'https://api.etherscan.io/v2/api',
+        },
+      },
+    },
+    80002: {
+      name: 'Polygon Amoy Testnet',
+      blockExplorers: {
+        etherscan: {
+          name: 'PolygonScan',
+          url: 'https://amoy.polygonscan.com',
+          apiUrl: 'https://api.etherscan.io/v2/api',
         },
       },
     },
